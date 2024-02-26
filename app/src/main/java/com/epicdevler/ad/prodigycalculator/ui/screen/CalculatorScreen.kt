@@ -1,7 +1,11 @@
 package com.epicdevler.ad.prodigycalculator.ui.screen
 
+import android.widget.Toast
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,96 +15,62 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.shapes
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.epicdevler.ad.prodigycalculator.util.Calculator
+import com.epicdevler.ad.prodigycalculator.util.CalculatorAction
+import kotlinx.coroutines.delay
 
-data class CalculatorAction(
-    val value: String,
-    val type: Type
-) {
-    enum class Type {
-        Digit, Operator, Clear, ClearAll, Submit
-    }
-}
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Calculator() {
+    val context = LocalContext.current
     val vm: CalculatorVM = viewModel()
 
     val uiState = vm.uiState.value
 
-    val operatorsFirst = listOf(
-        CalculatorAction(
-            value = "C",
-            type = CalculatorAction.Type.Clear
-        ),
-        CalculatorAction(
-            value = "+/-",
-            type = CalculatorAction.Type.Operator
-        ),
-        CalculatorAction(
-            value = "%",
-            type = CalculatorAction.Type.Operator
-        ),
-        CalculatorAction(
-            value = "÷",
-            type = CalculatorAction.Type.Operator
-        )
-    )
-
-    val digits = listOf(
-        operatorsFirst,
-        listOf(
-            CalculatorAction(value = "1", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "2", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "3", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "×", type = CalculatorAction.Type.Operator),
-        ),
-        listOf(
-            CalculatorAction(value = "4", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "5", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "6", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "+", type = CalculatorAction.Type.Operator),
-        ),
-        listOf(
-            CalculatorAction(value = "7", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "8", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "9", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "-", type = CalculatorAction.Type.Operator),
-        ),
-        listOf(
-            CalculatorAction(value = ".", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "0", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "00", type = CalculatorAction.Type.Digit),
-            CalculatorAction(value = "=", type = CalculatorAction.Type.Submit),
-        ),
-    )
+    LaunchedEffect(key1 = uiState.error) {
+        if (uiState.error != null) {
+            Toast.makeText(context, uiState.error, Toast.LENGTH_SHORT).show()
+            delay(1000)
+            vm.clearError()
+        }
+    }
 
     Column(
         modifier = Modifier
             .background(Color(0xFFD9E1EA))
             .fillMaxSize(),
     ) {
-        Text(
-            text = "01 Calculator",
-            style = typography.titleLarge,
-            color = Color(0x80373737),
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-
-            )
+        CenterAlignedTopAppBar(
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = Color.Transparent
+            ),
+            title = {
+                Text(
+                    text = "Calculator",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                )
+            }
+        )
         Column(
             verticalArrangement = Arrangement.Bottom,
             modifier = Modifier
@@ -109,7 +79,7 @@ fun Calculator() {
                 .padding(vertical = 16.dp)
         ) {
             Text(
-                text = uiState.input.ifEmpty { "0" },
+                text = uiState.input.ifEmpty { "00" },
                 style = typography.titleMedium,
                 color = Color(0x80373737),
                 textAlign = TextAlign.End,
@@ -127,58 +97,67 @@ fun Calculator() {
             ) {
                 Text(
                     text = "=",
-                    style = typography.titleLarge,
+                    style = typography.displaySmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = Color(0x80373737),
                     textAlign = TextAlign.End,
                 )
                 Text(
-                    text = uiState.sum,
-                    style = typography.titleLarge,
+                    text = uiState.sum.ifEmpty { "00" },
+                    style = typography.displaySmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = Color(0x80373737),
                     textAlign = TextAlign.End,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
-        Column(
-            modifier = Modifier
-                .background(Color(0xFFFEFEFE))
-                .fillMaxWidth()
-        ) {
-            digits.forEach {
-                Row {
-                    it.forEach { action ->
-                        Btn(
-                            label = action.value,
-                            bg = when (action.type) {
-                                CalculatorAction.Type.Submit -> colorScheme.primary
-                                else -> Color.Transparent
-                            },
-                            textColor = when (action.type) {
-                                CalculatorAction.Type.Submit -> colorScheme.onPrimary
-                                CalculatorAction.Type.Operator -> colorScheme.primary
-                                else -> colorScheme.onBackground
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                            onClick = {
-                                vm.invoke(action)
-                            },
-                            onLongClick = {
-                                if (action.type == CalculatorAction.Type.Clear) {
-                                    vm.invoke(action.copy(type = CalculatorAction.Type.ClearAll))
-                                }
-                            }
-                        )
-
-
-                    }
-
-                }
+        Buttons(
+            onPress = { action ->
+                vm.invoke(action)
             }
-
-        }
+        )
     }
 }
+
+@Composable
+fun Buttons(
+    onPress: (action: CalculatorAction) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .background(Color(0xFFFEFEFE))
+            .fillMaxWidth()
+    ) {
+        Calculator.buttons.forEach {
+            Row {
+                it.forEach { action ->
+                    Btn(
+                        label = action.value,
+                        bg = when (action.type) {
+                            CalculatorAction.Type.Submit -> colorScheme.primary
+                            else -> Color.Transparent
+                        },
+                        textColor = when (action.type) {
+                            CalculatorAction.Type.Submit -> colorScheme.onPrimary
+                            CalculatorAction.Type.Operator -> colorScheme.primary
+                            else -> colorScheme.onBackground
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        onClick = {
+                            onPress(action)
+                        }
+                    )
+
+
+                }
+
+            }
+        }
+
+    }
+}
+
 
 @Composable
 fun RowScope.Btn(
@@ -186,7 +165,6 @@ fun RowScope.Btn(
     textColor: Color = colorScheme.onBackground,
     label: String,
     onClick: () -> Unit = {},
-    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val shape = shapes.extraLarge
@@ -200,21 +178,26 @@ fun RowScope.Btn(
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
+                .indication(indication = LocalIndication.current, interactionSource = remember {
+                    MutableInteractionSource()
+                })
                 .clip(shape = shape)
                 .background(color = bg, shape = shape)
-                .clickable(
-                    onClick = onClick,
-                    onClickLabel = label
-                )
+                .clickable {
+                    onClick()
+                }
                 .padding(16.dp)
                 .then(modifier)
         ) {
+
+
             Text(
                 text = label,
                 style = typography.titleMedium,
                 color = textColor,
                 textAlign = TextAlign.Center
             )
+
         }
     }
 }
